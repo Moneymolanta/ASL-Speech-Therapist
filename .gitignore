@@ -1,0 +1,24 @@
+# Python env/cache
+.venv/
+__pycache__/
+*.pyc
+
+# Training artifacts / runtime outputs
+checkpoints/
+outputs/
+
+# Local data artifacts
+data/audio/
+data/datasets/
+data/asl_translation/
+
+# Large model/audio/archive/data formats
+*.pt
+*.pth
+*.ckpt
+*.wav
+*.mp3
+*.m4a
+*.zip
+*.parquet
+*.arrow

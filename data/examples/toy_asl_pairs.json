@@ -1,0 +1,18 @@
+[
+  {"english": "hello", "gloss": "HELLO"},
+  {"english": "thank you", "gloss": "THANK YOU"},
+  {"english": "i need help", "gloss": "I NEED HELP"},
+  {"english": "please help me", "gloss": "PLEASE HELP ME"},
+  {"english": "where is the bathroom", "gloss": "BATHROOM WHERE"},
+  {"english": "i am learning asl", "gloss": "I LEARN ASL"},
+  {"english": "can you help me today", "gloss": "TODAY YOU HELP ME"},
+  {"english": "i feel frustrated", "gloss": "I FEEL FRUSTRATED"},
+  {"english": "i feel happy", "gloss": "I FEEL HAPPY"},
+  {"english": "good morning", "gloss": "GOOD MORNING"},
+  {"english": "good night", "gloss": "GOOD NIGHT"},
+  {"english": "what is your name", "gloss": "YOUR NAME WHAT"},
+  {"english": "my name is alex", "gloss": "MY NAME ALEX"},
+  {"english": "i want water", "gloss": "I WANT WATER"},
+  {"english": "i am deaf", "gloss": "I DEAF"},
+  {"english": "nice to meet you", "gloss": "NICE MEET YOU"}
+]
