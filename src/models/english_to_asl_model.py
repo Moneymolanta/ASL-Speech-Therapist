@@ -109,16 +109,33 @@ class EnglishToASLTransformer(nn.Module):
         bos_idx: int,
         eos_idx: int,
         max_len: int = 32,
+        beam_width: int = 1,
     ) -> torch.Tensor:
-        """Greedy decoding for inference.
+        """Decode output tokens using greedy or beam search.
 
         Args:
             src_ids: [batch, src_len]
+            bos_idx: Beginning-of-sequence token index.
+            eos_idx: End-of-sequence token index.
+            max_len: Maximum output length.
+            beam_width: Beam size. 1 = greedy, >1 = beam search.
 
         Returns:
             generated token ids: [batch, <=max_len]
         """
         self.eval()
+        if beam_width <= 1:
+            return self._greedy_decode(src_ids, bos_idx, eos_idx, max_len)
+        return self._beam_search(src_ids, bos_idx, eos_idx, max_len, beam_width)
+
+    def _greedy_decode(
+        self,
+        src_ids: torch.Tensor,
+        bos_idx: int,
+        eos_idx: int,
+        max_len: int,
+    ) -> torch.Tensor:
+        """Original greedy decoding."""
         batch_size = src_ids.size(0)
         generated = torch.full(
             (batch_size, 1),
@@ -136,3 +153,69 @@ class EnglishToASLTransformer(nn.Module):
                 break
 
         return generated
+
+    def _beam_search(
+        self,
+        src_ids: torch.Tensor,
+        bos_idx: int,
+        eos_idx: int,
+        max_len: int,
+        beam_width: int,
+    ) -> torch.Tensor:
+        """Beam search decoding for improved translation quality.
+
+        Maintains `beam_width` candidate sequences at each step, selecting
+        the top-scoring beams based on cumulative log-probability.
+        Only supports batch_size=1 for simplicity.
+        """
+        device = src_ids.device
+
+        # Each beam: (log_prob, token_ids_list)
+        beams: list[tuple[float, list[int]]] = [(0.0, [bos_idx])]
+        completed: list[tuple[float, list[int]]] = []
+
+        for _ in range(max_len - 1):
+            if not beams:
+                break
+
+            all_candidates: list[tuple[float, list[int]]] = []
+
+            for score, seq in beams:
+                if seq[-1] == eos_idx:
+                    completed.append((score, seq))
+                    continue
+
+                tgt_tensor = torch.tensor([seq], dtype=torch.long, device=device)
+                logits = self.forward(src_ids=src_ids, tgt_input_ids=tgt_tensor)
+                log_probs = torch.log_softmax(logits[0, -1, :], dim=-1)
+
+                top_log_probs, top_indices = torch.topk(log_probs, beam_width)
+
+                for log_p, idx in zip(top_log_probs.tolist(), top_indices.tolist()):
+                    new_seq = seq + [idx]
+                    all_candidates.append((score + log_p, new_seq))
+
+            if not all_candidates:
+                break
+
+            # Keep top beam_width candidates
+            all_candidates.sort(key=lambda x: x[0], reverse=True)
+            beams = all_candidates[:beam_width]
+
+        # Add remaining beams to completed
+        completed.extend(beams)
+
+        if not completed:
+            return torch.tensor([[bos_idx]], dtype=torch.long, device=device)
+
+        # Length-normalized scoring to avoid bias toward short sequences
+        best_score = float("-inf")
+        best_seq = [bos_idx]
+        for score, seq in completed:
+            length_penalty = ((5.0 + len(seq)) / 6.0) ** 0.6
+            normalized = score / length_penalty
+            if normalized > best_score:
+                best_score = normalized
+                best_seq = seq
+
+        return torch.tensor([best_seq], dtype=torch.long, device=device)
